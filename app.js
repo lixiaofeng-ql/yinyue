@@ -20,6 +20,11 @@
     playback: {},
     lyrics: {},
 
+    // 赞美诗歌（教会敬拜 / 圣歌，data/praise.json + data/praise-lyrics.json）
+    praisePlaylists: [],
+    praiseSongs: [],
+    praiseLyrics: {},
+
     // 本地导入的音乐（data/local.json + media/）
     localSongs: [],
     localSrc: {},
@@ -228,9 +233,10 @@
     const s = state.queue[state.qIndex];
     if (!s) return;
     // 本地歌曲的歌词直接内嵌在条目里；在线歌曲从 lyrics.json 取
+    // 赞美诗歌的歌词单独存在 praise-lyrics.json 里
     const data = s.local
       ? { lrc: s.lrc || [] }
-      : state.lyrics[s.id];
+      : state.lyrics[s.id] || state.praiseLyrics[s.id];
     const body = $('lyric-body');
     $('lyric-title').textContent = `${s.name} — ${(s.artists || []).join(' / ')}`;
     if (!data || !data.lrc || !data.lrc.length) {
@@ -377,6 +383,20 @@
     $('mv-grid').innerHTML = state.mvs.map((m) => card(m, 'mv')).join('');
   }
 
+  function renderPraise() {
+    const lists = state.praisePlaylists || [];
+    const songs = state.praiseSongs || [];
+    $('praise-count').textContent = songs.length
+      ? `${lists.length} 个歌单 · ${songs.length} 首`
+      : '';
+    $('praise-grid').innerHTML = lists.length
+      ? lists.map((p) => card(p, 'list')).join('')
+      : '<p class="empty">暂时没有抓到赞美诗歌数据。</p>';
+    $('praise-songs').innerHTML = songs.length
+      ? songs.map((s, i) => songRow(s, i, { rank: true })).join('')
+      : '';
+  }
+
   function renderLocal() {
     const list = state.localSongs || [];
     $('local-count').textContent = `${list.length} 首`;
@@ -440,6 +460,19 @@
   function buildSearchIndex() {
     const idx = [];
     for (const s of state.songs) {
+      idx.push({
+        id: s.id,
+        name: s.name,
+        artists: s.artists,
+        album: s.album,
+        pic: s.pic,
+        duration: s.duration,
+        fee: s.fee,
+        text: `${s.name} ${(s.artists || []).join(' ')} ${s.album}`.toLowerCase(),
+      });
+    }
+    // 赞美诗歌也参与搜索
+    for (const s of state.praiseSongs || []) {
       idx.push({
         id: s.id,
         name: s.name,
@@ -539,11 +572,7 @@
     document.addEventListener('click', (e) => {
       const c = e.target.closest('[data-list]');
       if (c) {
-        const key = c.dataset.list;
-        const list =
-          state.charts.find((x) => x.key === key) ||
-          state.playlists.find((x) => x.key === key);
-        openList(list);
+        openList(findList(c.dataset.list));
       }
     });
 
@@ -574,13 +603,12 @@
       const container = row.closest('.song-list');
       let list = null;
       if (container.id === 'detail-songs') {
-        const key = container.dataset.listKey;
-        const src =
-          state.charts.find((x) => x.key === key) ||
-          state.playlists.find((x) => x.key === key);
+        const src = findList(container.dataset.listKey);
         list = src ? src.tracks : null;
       } else if (container.id === 'artist-songs') {
         list = state.songs.filter((s) => state.singerSongIds.includes(s.id));
+      } else if (container.id === 'praise-songs') {
+        list = state.praiseSongs;
       } else if (container.id === 'local-songs') {
         list = state.localSongs;
       } else if (container.id === 'search-songs') {
@@ -641,11 +669,19 @@
   }
 
   function currentDetailTracks() {
-    const key = $('detail-songs').dataset.listKey;
-    const src =
-      state.charts.find((x) => x.key === key) ||
-      state.playlists.find((x) => x.key === key);
+    const src = findList($('detail-songs').dataset.listKey);
     return src ? src.tracks : [];
+  }
+
+  /** 按 key 在所有歌单集合里查找（榜单 / 精选歌单 / 赞美诗歌） */
+  function findList(key) {
+    if (!key) return null;
+    return (
+      state.charts.find((x) => x.key === key) ||
+      state.playlists.find((x) => x.key === key) ||
+      state.praisePlaylists.find((x) => x.key === key) ||
+      null
+    );
   }
 
   /* ---------------- MV 播放 ---------------- */
@@ -694,6 +730,8 @@
       loadJSON('lyrics'),
       loadJSON('playback'),
       loadJSON('local'),
+      loadJSON('praise'),
+      loadJSON('praise-lyrics'),
     ]);
     const val = (i, fb) =>
       results[i].status === 'fulfilled' ? results[i].value : fb;
@@ -705,6 +743,8 @@
     const lyrics = val(5, {});
     const playback = val(6, {});
     const local = val(7, { songs: [] });
+    const praise = val(8, { playlists: [], songs: [] });
+    const praiseLyrics = val(9, {});
 
     state.charts = charts.charts || [];
     state.playlists = playlists.playlists || [];
@@ -715,6 +755,9 @@
     state.lyrics = lyrics || {};
     state.playback = playback || {};
     state.localSongs = local.songs || [];
+    state.praisePlaylists = praise.playlists || [];
+    state.praiseSongs = praise.songs || [];
+    state.praiseLyrics = praiseLyrics || {};
     buildSearchIndex();
 
     if (!state.songs.length && !state.charts.length && !state.localSongs.length) {
@@ -729,6 +772,7 @@
     renderPlaylists();
     renderSingers();
     renderMVs();
+    renderPraise();
     renderLocal();
     showPage('recommend', false);
     $('btn-back').classList.remove('show');

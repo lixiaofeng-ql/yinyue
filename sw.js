@@ -2,7 +2,7 @@
  * - 静态资源（js/css/icon）：缓存优先 + 后台更新
  * - data/*.json：网络优先（每次部署数据都会变，必须拿最新的），断网时回退缓存
  */
-const CACHE = 'yinyue-v3';
+const CACHE = 'yinyue-v4';
 const SHELL = [
   './',
   'index.html',
@@ -21,6 +21,8 @@ const DATA = [
   'data/lyrics.json',
   'data/playback.json',
   'data/local.json',
+  'data/praise.json',
+  'data/praise-lyrics.json',
 ];
 
 self.addEventListener('install', (e) => {

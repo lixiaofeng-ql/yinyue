@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "fetch": "node scripts/fetch-data.mjs",
+    "fetch:praise": "node scripts/fetch-praise.mjs",
     "icons": "node scripts/make-icons.mjs",
     "pack:www": "node scripts/pack-www.mjs",
     "add:local": "node scripts/add-local.mjs",

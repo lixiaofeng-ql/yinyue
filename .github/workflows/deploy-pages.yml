@@ -29,6 +29,11 @@ jobs:
         run: npm run fetch
         continue-on-error: true
 
+      # 抓取赞美诗歌（教会敬拜 / 圣歌）歌单与曲目
+      - name: Fetch praise songs
+        run: npm run fetch:praise
+        continue-on-error: true
+
       - name: Build site
         run: npm run build
 

@@ -257,6 +257,13 @@ html[data-theme='light'] .topbar {
   font-weight: 600;
 }
 
+.section-tip {
+  margin: -2px 0 12px;
+  color: var(--text-faint);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 /* ---------------- Hero ---------------- */
 .hero {
   position: relative;
