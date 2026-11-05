@@ -11,3 +11,5 @@ android/
 ios/
 
 .cache-praise/
+
+.www-tmp/

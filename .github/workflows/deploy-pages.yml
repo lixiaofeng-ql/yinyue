@@ -30,8 +30,15 @@ jobs:
         continue-on-error: true
 
       # 抓取赞美诗歌（教会敬拜 / 圣歌）歌单与曲目
+      # 仓库里已提交 data/praise.json；CI 服务器 IP 容易被网易云限流，
+      # 所以只在文件缺失时才现场抓取，避免把已有数据覆盖成几十首。
       - name: Fetch praise songs
-        run: npm run fetch:praise
+        run: |
+          if [ ! -f data/praise.json ]; then
+            npm run fetch:praise
+          else
+            echo "data/praise.json 已存在，跳过抓取"
+          fi
         continue-on-error: true
 
       - name: Build site
