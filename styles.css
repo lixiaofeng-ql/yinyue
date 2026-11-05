@@ -252,6 +252,11 @@ html[data-theme='light'] .topbar {
   cursor: pointer;
 }
 
+.more.active {
+  color: var(--brand);
+  font-weight: 600;
+}
+
 /* ---------------- Hero ---------------- */
 .hero {
   position: relative;
@@ -478,6 +483,24 @@ html[data-theme='light'] .topbar {
 
 .song.playing .dur {
   display: none;
+}
+
+/* VIP 标记：这类曲目大概率没有播放权限 */
+.song .lock {
+  flex: none;
+  padding: 1px 5px;
+  border: 1px solid rgba(255, 177, 66, 0.5);
+  border-radius: 4px;
+  color: #ffb142;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.3px;
+}
+
+html[data-theme='light'] .song .lock {
+  border-color: rgba(200, 130, 20, 0.45);
+  color: #b8770a;
 }
 
 .eq i {
@@ -826,6 +849,39 @@ html[data-theme='light'] .panel {
   margin: 0;
   font-size: 13px;
   color: var(--text-dim);
+}
+
+/* ---------------- 轻提示 ---------------- */
+#toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--player-h) + var(--safe-b) + 24px);
+  z-index: 90;
+  max-width: 78vw;
+  padding: 10px 16px;
+  border-radius: 20px;
+  background: rgba(20, 20, 24, 0.94);
+  color: #f2f2f4;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  opacity: 0;
+  transform: translate(-50%, 12px);
+  pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+#toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+html[data-theme='light'] #toast {
+  background: rgba(30, 30, 36, 0.92);
+  color: #fff;
 }
 
 /* ---------------- 加载 / 空态 ---------------- */

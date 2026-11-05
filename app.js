@@ -32,6 +32,7 @@
     shuffleMode: false,
 
     searchIndex: null,
+    onlyPlayable: false, // 搜索时是否只看可播歌曲
     theme: localStorage.getItem('yy-theme') || 'dark',
     liked: new Set(JSON.parse(localStorage.getItem('yy-liked') || '[]')),
     history: JSON.parse(localStorage.getItem('yy-history') || '[]'),
@@ -60,6 +61,21 @@
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
     }[c]));
 
+  /* ---------------- 轻提示 ---------------- */
+  let toastTimer = null;
+  function showToast(msg, ms = 2600) {
+    let el = $('toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'toast';
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+  }
+
   function setTheme(t) {
     state.theme = t;
     document.documentElement.dataset.theme = t;
@@ -82,6 +98,13 @@
     const id = typeof s === 'object' ? s.id : s;
     return `https://music.163.com/song/media/outer/url?id=${id}`;
   }
+
+  /**
+   * 网易云的曲目权限标记：
+   *   fee=0 免费 / fee=8 专辑（可播）/ fee=4 买断 / fee=1 VIP（需会员，一般不可播）
+   * 只有 VIP 和买断这几类大概率拿不到播放地址。
+   */
+  const isProbablyLocked = (s) => !s.local && (s.fee === 1 || s.fee === 4);
 
   /** 歌曲封面（本地歌没有封面时给占位图） */
   const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
@@ -177,8 +200,20 @@
     $('pb-play').textContent = '▶';
     markPlayingRow();
   });
+  let skipGuard = 0;
   audio.addEventListener('error', () => {
     $('pb-play').textContent = '▶';
+    const s = state.queue[state.qIndex];
+    if (!s) return;
+    // 拿不到播放地址（多半是 VIP / 无版权），给出明确提示并自动跳下一首
+    showToast(isProbablyLocked(s) ? '该曲为 VIP 会员专享，暂无法播放' : '这首无法播放，已自动跳过');
+    markPlayingRow();
+    // 连续失败超过 5 次就停下，避免整队列空转
+    if (++skipGuard < 5) {
+      setTimeout(() => nextSong(true), 900);
+    } else {
+      skipGuard = 0;
+    }
   });
   audio.addEventListener('ended', () => nextSong(true));
   audio.addEventListener('timeupdate', () => {
@@ -275,6 +310,7 @@
           <small>${esc((s.artists || []).join(' / '))}${s.album ? ' · ' + esc(s.album) : ''}</small>
         </div>
         <span class="eq"><i></i><i></i><i></i></span>
+        ${isProbablyLocked(s) ? '<span class="lock" title="VIP 曲目，可能无法播放">VIP</span>' : ''}
         <span class="dur">${dur}${liked ? ' ♥' : ''}</span>
       </div>`;
   }
@@ -411,6 +447,7 @@
         album: s.album,
         pic: s.pic,
         duration: s.duration,
+        fee: s.fee,
         text: `${s.name} ${(s.artists || []).join(' ')} ${s.album}`.toLowerCase(),
       });
     }
@@ -440,13 +477,20 @@
       showPage('search');
       return;
     }
-    const hits = (state.searchIndex || [])
-      .filter((s) => s.text.includes(query))
-      .slice(0, 100);
-    $('search-title').textContent = `“${q}” — ${hits.length} 个结果`;
+    let hits = (state.searchIndex || []).filter((s) => s.text.includes(query));
+    const total = hits.length;
+    if (state.onlyPlayable) {
+      hits = hits.filter((s) => !isProbablyLocked(s));
+    }
+    hits = hits.slice(0, 100);
+    $('search-title').textContent = state.onlyPlayable
+      ? `“${q}” — ${hits.length} 个可播结果（共 ${total}）`
+      : `“${q}” — ${total} 个结果`;
     $('search-songs').innerHTML = hits.length
       ? hits.map((s, i) => songRow(s, i)).join('')
-      : '<p class="empty">没有找到相关歌曲</p>';
+      : state.onlyPlayable
+        ? '<p class="empty">没有找到可播放的歌曲<br/>（取消「只看可播」可查看全部结果）</p>'
+        : '<p class="empty">没有找到相关歌曲</p>';
     showPage('search');
   }
 
@@ -470,6 +514,16 @@
     $('btn-search').addEventListener('click', () => doSearch($('search-input').value));
     $('search-input').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') doSearch(e.target.value);
+    });
+
+    // 搜索页「只看可播」开关
+    $('btn-filter-playable').addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.onlyPlayable = !state.onlyPlayable;
+      const btn = $('btn-filter-playable');
+      btn.classList.toggle('active', state.onlyPlayable);
+      btn.textContent = state.onlyPlayable ? '显示全部' : '只看可播';
+      doSearch($('search-input').value);
     });
 
     // "全部 ›"
