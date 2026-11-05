@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"
+    />
+    <meta name="theme-color" content="#1a1a1f" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="音乐" />
+    <meta name="description" content="音乐播放器 · 排行榜 · 歌单 · 歌词" />
+    <title>音乐馆</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <button class="icon-btn" id="btn-back" aria-label="返回">‹</button>
+        <div class="search-wrap">
+          <input
+            id="search-input"
+            type="search"
+            placeholder="搜索音乐、MV、歌单"
+            autocomplete="off"
+            enterkeyhint="search"
+          />
+          <button class="search-btn" id="btn-search" aria-label="搜索">⌕</button>
+        </div>
+        <button class="icon-btn" id="btn-theme" aria-label="切换主题">◐</button>
+      </header>
+
+      <nav class="tabs" id="tabs">
+        <button class="tab active" data-tab="recommend">推荐</button>
+        <button class="tab" data-tab="charts">排行榜</button>
+        <button class="tab" data-tab="playlists">歌单</button>
+        <button class="tab" data-tab="singer">歌手</button>
+        <button class="tab" data-tab="mv">MV</button>
+      </nav>
+
+      <main class="content" id="content">
+        <!-- 推荐 -->
+        <section class="page" id="page-recommend">
+          <div class="hero" id="hero">
+            <div class="hero-bg"></div>
+            <div class="hero-text">
+              <p class="kicker">今日推荐</p>
+              <h1 id="hero-title">加载中…</h1>
+              <p id="hero-desc"></p>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-head">
+              <h2>推荐歌单</h2>
+              <button class="more" data-goto="playlists">全部 ›</button>
+            </div>
+            <div class="grid grid-playlist" id="rec-playlists"></div>
+          </div>
+
+          <div class="section">
+            <div class="section-head">
+              <h2>热门歌曲</h2>
+              <button class="more" data-goto="charts">榜单 ›</button>
+            </div>
+            <div class="song-list" id="rec-songs"></div>
+          </div>
+        </section>
+
+        <!-- 排行榜 -->
+        <section class="page" id="page-charts" hidden>
+          <div class="section">
+            <div class="section-head"><h2>排行榜</h2></div>
+            <div class="grid grid-chart" id="charts-grid"></div>
+          </div>
+        </section>
+
+        <!-- 歌单 -->
+        <section class="page" id="page-playlists" hidden>
+          <div class="section">
+            <div class="section-head"><h2>精选歌单</h2></div>
+            <div class="grid grid-playlist" id="playlists-grid"></div>
+          </div>
+        </section>
+
+        <!-- 歌手 -->
+        <section class="page" id="page-singer" hidden>
+          <div class="section">
+            <div class="section-head"><h2>热门歌手</h2></div>
+            <div class="grid grid-singer" id="singer-grid"></div>
+          </div>
+        </section>
+
+        <!-- MV -->
+        <section class="page" id="page-mv" hidden>
+          <div class="section">
+            <div class="section-head"><h2>热门 MV</h2></div>
+            <div class="grid grid-mv" id="mv-grid"></div>
+          </div>
+        </section>
+
+        <!-- 歌曲详情（点开歌单/榜单） -->
+        <section class="page" id="page-detail" hidden>
+          <div class="detail-head" id="detail-head">
+            <div class="detail-cover"><img id="detail-cover" alt="" /></div>
+            <div class="detail-meta">
+              <h2 id="detail-name"></h2>
+              <p id="detail-desc"></p>
+              <div class="detail-actions">
+                <button class="btn primary" id="btn-play-all">播放全部</button>
+                <button class="btn ghost" id="btn-random">随机播放</button>
+              </div>
+            </div>
+          </div>
+          <div class="song-list" id="detail-songs"></div>
+        </section>
+
+        <!-- 搜索结果 -->
+        <section class="page" id="page-search" hidden>
+          <div class="section">
+            <div class="section-head"><h2 id="search-title">搜索结果</h2></div>
+            <div class="song-list" id="search-songs"></div>
+          </div>
+        </section>
+
+        <!-- 歌手详情 -->
+        <section class="page" id="page-artist" hidden>
+          <div class="artist-head" id="artist-head"></div>
+          <div class="song-list" id="artist-songs"></div>
+        </section>
+
+        <!-- MV 播放页 -->
+        <section class="page" id="page-mv-detail" hidden>
+          <div class="mv-player">
+            <video id="mv-video" controls playsinline preload="metadata"></video>
+            <h2 id="mv-title"></h2>
+            <p id="mv-desc"></p>
+          </div>
+        </section>
+      </main>
+
+      <!-- 底部播放条 -->
+      <div class="player-bar" id="player-bar" hidden>
+        <img id="pb-cover" alt="" />
+        <div class="pb-info">
+          <strong id="pb-name"></strong>
+          <small id="pb-artist"></small>
+        </div>
+        <button class="icon-btn" id="pb-lyric" aria-label="歌词">词</button>
+        <button class="icon-btn" id="pb-play" aria-label="播放/暂停">▶</button>
+        <button class="icon-btn" id="pb-next" aria-label="下一首">⏭</button>
+      </div>
+    </div>
+
+    <!-- 歌词面板 -->
+    <div class="panel" id="lyric-panel" hidden>
+      <div class="panel-card">
+        <header>
+          <h2 id="lyric-title">歌词</h2>
+          <button class="icon-btn" id="lyric-close" aria-label="关闭">✕</button>
+        </header>
+        <div class="panel-body" id="lyric-body"></div>
+      </div>
+    </div>
+
+    <div class="install-bar" id="install-bar" hidden>
+      <p>把音乐馆安装到主屏幕，可像 App 一样全屏使用。</p>
+      <button class="btn primary" id="btn-install" type="button">安装</button>
+      <button class="icon-btn" id="install-close" type="button" aria-label="关闭">✕</button>
+    </div>
+
+    <!-- 注意：不要加 crossorigin="anonymous" -->
+    <!-- 网易云 CDN 不返回 CORS 头，声明 crossorigin 会导致媒体加载失败 -->
+    <audio id="audio" preload="none"></audio>
+
+    <script src="app.js"></script>
+  </body>
+</html>

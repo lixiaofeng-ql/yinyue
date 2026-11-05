@@ -1,0 +1,21 @@
+{
+  "name": "yinyue",
+  "private": true,
+  "version": "1.0.0",
+  "description": "音乐馆 — 静态 PWA 音乐播放器（排行榜 / 歌单 / 歌词 / 播放）",
+  "type": "module",
+  "scripts": {
+    "fetch": "node scripts/fetch-data.mjs",
+    "icons": "node scripts/make-icons.mjs",
+    "pack:www": "node scripts/pack-www.mjs",
+    "build": "npm run icons && npm run pack:www",
+    "serve": "python -m http.server 8080 --bind 0.0.0.0"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.4",
+    "@capacitor/core": "^7.4.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.4"
+  }
+}

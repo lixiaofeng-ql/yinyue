@@ -1,0 +1,11 @@
+node_modules/
+www/
+dist/
+tmp/
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+android/
+ios/
