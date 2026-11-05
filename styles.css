@@ -576,6 +576,41 @@ html[data-theme='light'] .topbar {
   transform: scale(0.97);
 }
 
+/* ---------------- 我的音乐 ---------------- */
+.local-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+}
+
+.local-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.local-info strong {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.local-info small {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.local-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .artist-head {
   padding: 20px 12px 12px;
   text-align: center;

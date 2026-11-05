@@ -2,4 +2,14 @@
 *.png binary
 *.json binary
 *.mp3 binary
+*.m4a binary
+*.flac binary
+*.aac binary
+*.wav binary
+*.ogg binary
+*.opus binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.lrc text eol=lf
 *.apk binary

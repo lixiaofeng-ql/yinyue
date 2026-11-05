@@ -8,6 +8,7 @@
     "fetch": "node scripts/fetch-data.mjs",
     "icons": "node scripts/make-icons.mjs",
     "pack:www": "node scripts/pack-www.mjs",
+    "add:local": "node scripts/add-local.mjs",
     "build": "npm run icons && npm run pack:www",
     "serve": "python -m http.server 8080 --bind 0.0.0.0"
   },

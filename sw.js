@@ -2,7 +2,7 @@
  * - 静态资源（js/css/icon）：缓存优先 + 后台更新
  * - data/*.json：网络优先（每次部署数据都会变，必须拿最新的），断网时回退缓存
  */
-const CACHE = 'yinyue-v2';
+const CACHE = 'yinyue-v3';
 const SHELL = [
   './',
   'index.html',
@@ -20,6 +20,7 @@ const DATA = [
   'data/mvs.json',
   'data/lyrics.json',
   'data/playback.json',
+  'data/local.json',
 ];
 
 self.addEventListener('install', (e) => {
@@ -75,6 +76,11 @@ self.addEventListener('fetch', (e) => {
           caches.match(req).then((hit) => hit || new Response('{}', { status: 503 }))
         )
     );
+    return;
+  }
+
+  // 本地音乐文件：大文件，不进缓存，直接走网络（浏览器自己会做 range 缓存）
+  if (url.pathname.includes('/media/')) {
     return;
   }
 

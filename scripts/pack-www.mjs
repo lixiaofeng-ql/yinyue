@@ -37,6 +37,8 @@ for (const file of [
 
 copy('icons');
 copy('data');
+// 本地导入的音乐文件（可选，目录不存在时跳过）
+copy('media');
 
 let total = 0;
 const walk = (dir) => {

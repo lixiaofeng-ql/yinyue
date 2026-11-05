@@ -40,6 +40,7 @@
         <button class="tab" data-tab="playlists">歌单</button>
         <button class="tab" data-tab="singer">歌手</button>
         <button class="tab" data-tab="mv">MV</button>
+        <button class="tab" data-tab="local">我的音乐</button>
       </nav>
 
       <main class="content" id="content">
@@ -100,6 +101,24 @@
           <div class="section">
             <div class="section-head"><h2>热门 MV</h2></div>
             <div class="grid grid-mv" id="mv-grid"></div>
+          </div>
+        </section>
+
+        <!-- 我的音乐（本地导入） -->
+        <section class="page" id="page-local" hidden>
+          <div class="section">
+            <div class="section-head"><h2>我的音乐</h2></div>
+            <div class="local-hero">
+              <div class="local-info">
+                <strong id="local-count">0 首</strong>
+                <small>已导入到本仓库的本地音乐</small>
+              </div>
+              <div class="local-actions">
+                <button class="btn primary" id="local-play-all">播放全部</button>
+                <button class="btn ghost" id="local-random">随机播放</button>
+              </div>
+            </div>
+            <div class="song-list" id="local-songs"></div>
           </div>
         </section>
 

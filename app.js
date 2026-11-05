@@ -20,6 +20,10 @@
     playback: {},
     lyrics: {},
 
+    // 本地导入的音乐（data/local.json + media/）
+    localSongs: [],
+    localSrc: {},
+
     tab: 'recommend',
     stack: [], // 详情页栈
 
@@ -34,8 +38,13 @@
   };
 
   /* ---------------- 工具 ---------------- */
-  const fmtTime = (sec) => {
-    if (!sec && sec !== 0) return '';
+  /**
+   * 时长格式化。数据源（网易云 API / 本地 ffprobe）的 duration 单位是**毫秒**，
+   * 这里统一按毫秒处理；只有极小的值（< 1000）才视为已经是秒，防止个别来源用秒。
+   */
+  const fmtTime = (ms) => {
+    if (!ms && ms !== 0) return '';
+    const sec = ms < 1000 ? Math.round(ms) : Math.round(ms / 1000);
     const m = Math.floor(sec / 60);
     const s = Math.floor(sec % 60);
     return `${m}:${String(s).padStart(2, '0')}`;
@@ -61,13 +70,27 @@
   /* ---------------- 播放 ---------------- */
   /**
    * 播放地址解析顺序：
-   *  1. 构建时抓好的静态直链（data/playback.json）—— 首选，HTTPS，无混合内容风险
-   *  2. 运行时 outer/url 跳转 —— 兜底（构建时没抓到的新歌）
+   *  1. 本地导入的歌曲 —— 站点内相对路径（data/local.json 的 src）
+   *  2. 构建时抓好的静态直链（data/playback.json）—— 首选，HTTPS，无混合内容风险
+   *  3. 运行时 outer/url 跳转 —— 兜底（构建时没抓到的新歌）
    */
-  function songUrl(id) {
+  function songUrl(s) {
+    if (s.local && s.src) return s.src;
+    const id = typeof s === 'object' ? s.id : s;
     const cached = state.playback && state.playback[id];
     if (cached) return cached;
     return `https://music.163.com/song/media/outer/url?id=${id}`;
+  }
+
+  /** 歌曲封面（本地歌没有封面时给占位图） */
+  const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120">' +
+      '<rect width="120" height="120" fill="%2326262e"/>' +
+      '<text x="60" y="72" font-size="46" fill="%236a6a74" text-anchor="middle">♪</text></svg>'
+  );
+
+  function coverOf(s) {
+    return s.pic || PLACEHOLDER;
   }
 
   function playQueue(list, startIndex) {
@@ -79,7 +102,7 @@
   function loadCurrent() {
     const s = state.queue[state.qIndex];
     if (!s) return;
-    audio.src = songUrl(s.id);
+    audio.src = songUrl(s);
     audio.play().catch(() => {
       /* 自动播放被拦截，等用户交互 */
     });
@@ -133,7 +156,7 @@
       return;
     }
     $('player-bar').hidden = false;
-    $('pb-cover').src = s.pic || '';
+    $('pb-cover').src = coverOf(s);
     $('pb-name').textContent = s.name;
     $('pb-artist').textContent = (s.artists || []).join(' / ');
   }
@@ -141,7 +164,7 @@
   function markPlayingRow() {
     const cur = state.queue[state.qIndex];
     document.querySelectorAll('.song').forEach((el) => {
-      el.classList.toggle('playing', !!cur && Number(el.dataset.id) === cur.id);
+      el.classList.toggle('playing', !!cur && String(el.dataset.id) === String(cur.id));
     });
   }
 
@@ -168,7 +191,10 @@
   function openLyric() {
     const s = state.queue[state.qIndex];
     if (!s) return;
-    const data = state.lyrics[s.id];
+    // 本地歌曲的歌词直接内嵌在条目里；在线歌曲从 lyrics.json 取
+    const data = s.local
+      ? { lrc: s.lrc || [] }
+      : state.lyrics[s.id];
     const body = $('lyric-body');
     $('lyric-title').textContent = `${s.name} — ${(s.artists || []).join(' / ')}`;
     if (!data || !data.lrc || !data.lrc.length) {
@@ -237,7 +263,7 @@
     return `
       <div class="song" data-id="${s.id}" data-idx="${i}">
         <span class="idx ${opts.rank && i < 3 ? 'top3' : ''}">${opts.rank ? i + 1 : ''}</span>
-        <img class="cover" src="${esc(s.pic)}" alt="" loading="lazy" />
+        <img class="cover" src="${esc(coverOf(s))}" alt="" loading="lazy" />
         <div class="meta">
           <strong>${esc(s.name)}</strong>
           <small>${esc((s.artists || []).join(' / '))}${s.album ? ' · ' + esc(s.album) : ''}</small>
@@ -309,6 +335,14 @@
     $('mv-grid').innerHTML = state.mvs.map((m) => card(m, 'mv')).join('');
   }
 
+  function renderLocal() {
+    const list = state.localSongs || [];
+    $('local-count').textContent = `${list.length} 首`;
+    $('local-songs').innerHTML = list.length
+      ? list.map((s, i) => songRow(s, i, { rank: true })).join('')
+      : '<p class="empty">还没有导入本地音乐。<br/>运行 <code>node scripts/add-local.mjs "你的音乐文件夹" --convert</code> 后提交即可。</p>';
+  }
+
   /* ---------------- 页面切换 ---------------- */
   function showPage(id, push = true) {
     document.querySelectorAll('.page').forEach((p) => (p.hidden = true));
@@ -371,6 +405,21 @@
         album: s.album,
         pic: s.pic,
         duration: s.duration,
+        text: `${s.name} ${(s.artists || []).join(' ')} ${s.album}`.toLowerCase(),
+      });
+    }
+    // 本地导入的歌也参与搜索
+    for (const s of state.localSongs || []) {
+      idx.push({
+        id: s.id,
+        name: s.name,
+        artists: s.artists,
+        album: s.album,
+        pic: s.pic,
+        duration: s.duration,
+        local: true,
+        src: s.src,
+        lrc: s.lrc,
         text: `${s.name} ${(s.artists || []).join(' ')} ${s.album}`.toLowerCase(),
       });
     }
@@ -460,7 +509,8 @@
     document.addEventListener('click', (e) => {
       const row = e.target.closest('.song');
       if (!row) return;
-      const id = Number(row.dataset.id);
+      // id 可能是数字（网易云）或字符串（本地导入的 local-xxxx），统一按字符串比较
+      const id = row.dataset.id;
       const container = row.closest('.song-list');
       let list = null;
       if (container.id === 'detail-songs') {
@@ -471,10 +521,15 @@
         list = src ? src.tracks : null;
       } else if (container.id === 'artist-songs') {
         list = state.songs.filter((s) => state.singerSongIds.includes(s.id));
+      } else if (container.id === 'local-songs') {
+        list = state.localSongs;
+      } else if (container.id === 'search-songs') {
+        // 搜索结果混合了在线歌和本地歌，直接用搜索索引作为队列
+        list = state.searchIndex || [];
       } else {
         list = state.songs;
       }
-      const idx = list.findIndex((s) => s.id === id);
+      const idx = list.findIndex((s) => String(s.id) === id);
       if (idx >= 0) playQueue(list, idx);
     });
 
@@ -485,6 +540,21 @@
     });
     $('btn-random').addEventListener('click', () => {
       const list = currentDetailTracks().slice();
+      if (!list.length) return;
+      for (let i = list.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [list[i], list[j]] = [list[j], list[i]];
+      }
+      state.shuffleMode = true;
+      playQueue(list, 0);
+    });
+
+    // 我的音乐：播放全部 / 随机播放
+    $('local-play-all').addEventListener('click', () => {
+      if (state.localSongs.length) playQueue(state.localSongs, 0);
+    });
+    $('local-random').addEventListener('click', () => {
+      const list = state.localSongs.slice();
       if (!list.length) return;
       for (let i = list.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -562,6 +632,7 @@
       loadJSON('mvs'),
       loadJSON('lyrics'),
       loadJSON('playback'),
+      loadJSON('local'),
     ]);
     const val = (i, fb) =>
       results[i].status === 'fulfilled' ? results[i].value : fb;
@@ -572,6 +643,7 @@
     const mvs = val(4, { mvs: [] });
     const lyrics = val(5, {});
     const playback = val(6, {});
+    const local = val(7, { songs: [] });
 
     state.charts = charts.charts || [];
     state.playlists = playlists.playlists || [];
@@ -581,9 +653,10 @@
     state.mvUrls = mvs.urls || {};
     state.lyrics = lyrics || {};
     state.playback = playback || {};
+    state.localSongs = local.songs || [];
     buildSearchIndex();
 
-    if (!state.songs.length && !state.charts.length) {
+    if (!state.songs.length && !state.charts.length && !state.localSongs.length) {
       document.querySelectorAll('.page').forEach((p) => (p.hidden = true));
       $('content').innerHTML =
         '<p class="empty">还没有数据。请先运行 <code>npm run fetch</code> 生成 data/*.json。</p>';
@@ -595,6 +668,7 @@
     renderPlaylists();
     renderSingers();
     renderMVs();
+    renderLocal();
     showPage('recommend', false);
     $('btn-back').classList.remove('show');
 

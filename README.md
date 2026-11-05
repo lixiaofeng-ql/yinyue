@@ -14,8 +14,9 @@
 - **本地搜索**：1000+ 首歌曲的离线索引，搜歌名 / 歌手 / 专辑，瞬时出结果，无需联网
 - **随机播放**：每个歌单一键随机 shuffle
 - **MV 播放**：内置 MV 播放器，构建时抓取真实视频直链
-- **深色 / 浅色主题**：日间夜���切换，记忆到 localStorage
+- **深色 / 浅色主题**：日间夜间切换，记忆到 localStorage
 - **PWA**：可安装到手机主屏幕，像原生 App 一样全屏运行；Service Worker 缓存静态资源，离线可用
+- **上传本地音乐**：一键把自己的歌单导入仓库并部署上线，见下方「导入本地音乐」
 
 ## 技术栈
 
@@ -46,14 +47,102 @@ yinyue/
 │   ├── singers.json        歌手 + 其热门歌曲
 │   ├── mvs.json            MV 列表 + 视频直链
 │   ├── lyrics.json         LRC 时间轴歌词
-│   └── playback.json       歌曲 -> HTTPS CDN 直链
+│   ├── playback.json       歌曲 -> HTTPS CDN 直链
+│   └── local.json          本地导入的音乐清单（手动生成，CI 不会覆盖）
+├── media/                  本地导入的音乐文件（手动生成）
+│   ├── *.mp3               音频文件
+│   └── covers/             封面图
 ├── scripts/
 │   ├── fetch-data.mjs      抓取全部数据
+│   ├── add-local.mjs       导入本地音乐（新增）
 │   ├── make-icons.mjs      生成 PWA 图标（手写 PNG，无依赖）
 │   └── pack-www.mjs        打包到 www/
 └── .github/workflows/
     └── deploy-pages.yml    自动部署到 Pages
 ```
+
+## 导入本地音乐
+
+把你电脑上的歌曲上传到这个项目，部署后手机就能直接播放。
+
+### 前置条件
+
+- **ffmpeg**（必需，用于读取标签、时长、转码）：<https://ffmpeg.org/download.html>
+  下载后把 `bin` 目录加进系统 `PATH`，验证：
+
+  ```bash
+  ffmpeg -version
+  ```
+
+### 一条命令导入
+
+```bash
+npm run add:local -- "D:\我的音乐" --convert
+```
+
+脚本会：
+
+1. 递归扫描文件夹里所有音频（`.mp3` `.flac` `.m4a` `.wav` `.ogg` …）
+2. 用 ffprobe 读取歌名 / 歌手 / 专辑 / 时长
+3. 用 ffmpeg **统一转码为 192kbps mp3**（浏览器兼容最好、体积最小）
+4. 同目录的 `cover.jpg` / `folder.jpg` / `同名.jpg` 自动识别为封面
+5. 同名 `.lrc` 文件自动解析为滚动歌词
+6. 生成 `media/`（音频 + 封面）和 `data/local.json`（清单）
+
+### 选项
+
+| 选项 | 作用 |
+|---|---|
+| `--convert` | 转码为 mp3 192k（**推荐**，兼容性最好） |
+| `--bitrate 320` | 指定转码码率（配合 `--convert`） |
+| `--prune` | 删除清单里已不存在的音乐文件和封面 |
+| `--no-lyrics` | 忽略同名 `.lrc` 歌词 |
+| 不加 `--convert` | 原样复制，保留 FLAC 等原始格式（浏览器不一定能播） |
+
+### 目录结构建议
+
+```
+我的音乐/
+├── 华语/
+│   ├── cover.jpg          ← 整张专辑的封面（可选）
+│   ├── 晴天.mp3
+│   ├── 晴天.lrc          ← 同名歌词（可选）
+│   └── 稻香.mp3
+└── 纯音乐/
+    └── ...
+```
+
+### 提交并部署
+
+```bash
+git add media data/local.json
+git commit -m "feat: 导入本地音乐"
+git push
+```
+
+push 后 GitHub Actions 会自动重新构建并发布，约 1-2 分钟后线上就能听到你的歌。
+在 App 里切到 **「我的音乐」** 标签页即可播放，也能通过顶部搜索框搜到。
+
+### 重要限制
+
+| 限制 | 说明 |
+|---|---|
+| **单文件 ≤ 100 MB** | GitHub 硬限制。单曲超过 100MB 请用 `--convert` 压缩（192kbps 下 4 分钟约 6MB） |
+| **仓库体积** | GitHub 建议仓库 ≤ 1GB。几百首 192kbps 的歌约 300-600MB，属于可接受范围 |
+| **不能用 Git LFS** | Pages 不支持 LFS，LFS 文件在页面上只会返回指针文本 |
+| **CI 不会覆盖本地歌** | 本地歌存放在 `data/local.json`（独立文件），`npm run fetch` 只重写 `charts/playlists/songs/singers/mvs/lyrics/playback`，不会动你的歌 |
+| **首次加载要下载音频** | 音频不进 Service Worker 缓存（文件大，会撑爆缓存配额），每次播放走网络，手机上建议用 Wi-Fi |
+
+### 批量更新
+
+重复运行 `npm run add:local` 即可增量更新：
+
+- 音频没变的 → 直接复用已转码的文件，不重复转码（快）
+- 音频变了 → 重新转码
+- 只改了歌词 / 封面 → 只更新清单，音频复用
+- 加了 `--prune` → 清掉已删除歌曲的文件
+
+---
 
 ## 本地运行
 
