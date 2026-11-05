@@ -71,14 +71,15 @@
   /**
    * 播放地址解析顺序：
    *  1. 本地导入的歌曲 —— 站点内相对路径（data/local.json 的 src）
-   *  2. 构建时抓好的静态直链（data/playback.json）—— 首选，HTTPS，无混合内容风险
-   *  3. 运行时 outer/url 跳转 —— 兜底（构建时没抓到的新歌）
+   *  2. 运行时 outer/url 跳转 —— 首选
+   *
+   * 说明：网易云 CDN 直链（构建时解析并存在 data/playback.json 里）
+   * 路径里带时间戳，**有效期很短**，过期后返回 403，
+   * 所以这里不再直接用缓存的直链，统一走 outer/url 实时拿新地址。
    */
   function songUrl(s) {
     if (s.local && s.src) return s.src;
     const id = typeof s === 'object' ? s.id : s;
-    const cached = state.playback && state.playback[id];
-    if (cached) return cached;
     return `https://music.163.com/song/media/outer/url?id=${id}`;
   }
 
@@ -216,6 +217,11 @@
     }
     $('lyric-panel').hidden = false;
     startLyricSync();
+  }
+
+  function closeLyric() {
+    $('lyric-panel').hidden = true;
+    stopLyricSync();
   }
 
   function startLyricSync() {
@@ -568,9 +574,10 @@
     $('pb-play').addEventListener('click', togglePlay);
     $('pb-next').addEventListener('click', () => nextSong());
     $('pb-lyric').addEventListener('click', openLyric);
-    $('lyric-close').addEventListener('click', () => {
-      $('lyric-panel').hidden = true;
-      stopLyricSync();
+    $('lyric-close').addEventListener('click', closeLyric);
+    // 点击歌词面板的遮罩空白处也能关闭
+    $('lyric-panel').addEventListener('click', (e) => {
+      if (e.target === $('lyric-panel')) closeLyric();
     });
 
     // 安装条

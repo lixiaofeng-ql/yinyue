@@ -34,6 +34,13 @@ html[data-theme='light'] {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* hidden 属性必须能盖住下面那些 display:flex 的规则，
+   否则 .panel / .player-bar / .install-bar 这类全屏遮罩
+   在 hidden=true 时依然会显示并拦截所有点击 */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   margin: 0;
